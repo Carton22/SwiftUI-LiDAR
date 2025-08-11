@@ -45,9 +45,6 @@ struct StartView: View {
                     }
                 }
                 .padding()
-                .navigationDestination(isPresented: $shouldNavigateToScanView) {
-                    Capture3DScanView().navigationBarHidden(true)
-                }
                 .navigationDestination(isPresented: $shouldNavigateToViewList) {
                     View3DScansView().navigationBarHidden(true)
                 }
@@ -57,6 +54,9 @@ struct StartView: View {
                         .multilineTextAlignment(.center)
                 }
             }
+        }
+        .fullScreenCover(isPresented: $shouldNavigateToScanView) {
+            Capture3DScanView()
         }
     }
 }
