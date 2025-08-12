@@ -8,6 +8,69 @@
 import SwiftUI
 import RealityKit
 import ARKit
+import Foundation
+
+// MARK: - Mesh Data Structure for Serialization
+struct MeshData: Codable {
+    let id: String                    // UUID of the mesh anchor
+    let vertices: [Float]             // Array of vertex coordinates [x1, y1, z1, x2, y2, z2, ...]
+    // let normals: [Float]              // Array of normal coordinates [nx1, ny1, nz1, nx2, ny2, nz2, ...]
+    let faces: [[UInt32]]             // Array of face indices [[v1, v2, v3], [v4, v5, v6], ...]
+    let transform: [Float]            // 4x4 transform matrix as 16 floats
+    let timestamp: TimeInterval       // When the mesh was captured
+    
+    init(from meshAnchor: ARMeshAnchor) {
+        self.id = meshAnchor.identifier.uuidString
+        self.timestamp = Date().timeIntervalSince1970
+        
+        // Extract vertices
+        let vertexCount = meshAnchor.geometry.vertices.count
+        var vertices: [Float] = []
+        vertices.reserveCapacity(vertexCount * 3)
+        
+        for i in 0..<vertexCount {
+            let vertex = meshAnchor.geometry.vertex(at: UInt32(i))
+            vertices.append(contentsOf: [Float(vertex.x), Float(vertex.y), Float(vertex.z)])
+        }
+        self.vertices = vertices
+        
+        // // Extract normals
+        // let normalCount = meshAnchor.geometry.normals.count
+        // var normals: [Float] = []
+        // normals.reserveCapacity(normalCount * 3)
+        
+        // for i in 0..<normalCount {
+        //     normals.append(contentsOf: [Float(meshAnchor.geometry.normals[Int32(i)].0), Float(meshAnchor.geometry.normals[Int32(i)].1), Float(meshAnchor.geometry.normals[Int32(i)].2)])
+        //     print("debug \(meshAnchor.geometry.normals[Int32(i)].0) \(meshAnchor.geometry.normals[Int32(i)].1) \(meshAnchor.geometry.normals[Int32(i)].2)")
+        // }
+        // self.normals = normals
+        
+        // Extract faces
+        let faceBuffer = meshAnchor.geometry.faces
+        var faces: [[UInt32]] = []
+        faces.reserveCapacity(faceBuffer.count)
+        
+        for i in 0..<faceBuffer.count {
+            let face = faceBuffer[i]
+            let faceIndices = [
+                UInt32(face.indices[0]),
+                UInt32(face.indices[1]),
+                UInt32(face.indices[2])
+            ]
+            faces.append(faceIndices)
+        }
+        self.faces = faces
+        
+        // Extract transform matrix
+        let transform = meshAnchor.transform
+        self.transform = [
+            Float(transform[0][0]), Float(transform[0][1]), Float(transform[0][2]), Float(transform[0][3]),
+            Float(transform[1][0]), Float(transform[1][1]), Float(transform[1][2]), Float(transform[1][3]),
+            Float(transform[2][0]), Float(transform[2][1]), Float(transform[2][2]), Float(transform[2][3]),
+            Float(transform[3][0]), Float(transform[3][1]), Float(transform[3][2]), Float(transform[3][3])
+        ]
+    }
+}
 
 struct ARWrapperView: UIViewRepresentable {
     @Binding var submittedExportRequest: Bool
@@ -143,7 +206,7 @@ class Coordinator: NSObject, ARSessionDelegate {
         print("Mesh UUID: \(uuid)")
         print("Vertices count: \(geometry.vertices.count)")
         print("Faces count: \(geometry.faces.count)")
-        print("Normals count: \(geometry.normals.count)")
+        print("Normals count: \(geometry.normals.count)")  
         
         // Print first few vertices for reference
         if geometry.vertices.count > 0 {
@@ -171,6 +234,34 @@ class Coordinator: NSObject, ARSessionDelegate {
         let transform = meshAnchor.transform
         print("  Position: x=\(transform[0][0]), y=\(transform[0][1]), z=\(transform[0][2])")
         print("==================")
+        
+        // Create and serialize mesh data
+        let meshData = MeshData(from: meshAnchor)
+        serializeMeshData(meshData)
+    }
+    
+    private func serializeMeshData(_ meshData: MeshData) {
+        do {
+            
+            let jsonData = try JSONEncoder().encode(meshData)
+            let jsonString = String(data: jsonData, encoding: .utf8) ?? "Failed to encode"
+            
+            
+            print("=== MESH DATA SERIALIZED ===")
+            print("Mesh ID: \(meshData.id)")
+            print("Vertices: \(meshData.vertices.count) coordinates")
+            // print("Normals: \(meshData.normals.count) coordinates")  // Temporarily commented out
+            print("Faces: \(meshData.faces.count) triangles")
+            print("Transform: \(meshData.transform.count) matrix elements")
+            print("JSON Size: \(jsonData.count) bytes")
+            print("First few JSON characters: \(String(jsonString.prefix(100)))...")
+            print("=============================")
+            
+            // @Carton would use Websocket to send the data to the server later
+           
+        } catch {
+            print("Failed to serialize mesh data: \(error)")
+        }
     }
 }
 
