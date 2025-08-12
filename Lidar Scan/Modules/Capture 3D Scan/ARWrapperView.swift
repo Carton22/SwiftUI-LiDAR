@@ -24,6 +24,9 @@ struct ARWrapperView: UIViewRepresentable {
         let configuration = buildConfigure()
         arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         
+        // Set up session delegate for mesh geometry logging
+        arView.session.delegate = context.coordinator
+        
         print("ARView created and session started")
         return arView
     }
@@ -103,6 +106,71 @@ struct ARWrapperView: UIViewRepresentable {
         arView.backgroundColor = .clear
         
         print("AR View options configured")
+    }
+    
+    // Add coordinator for mesh geometry logging
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+}
+
+// MARK: - Coordinator for Mesh Geometry Logging
+class Coordinator: NSObject, ARSessionDelegate {
+    
+    // Called whenever new mesh anchors are created or updated
+    func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
+        for anchor in anchors {
+            if let meshAnchor = anchor as? ARMeshAnchor {
+                printMeshGeometryInfo(meshAnchor: meshAnchor, event: "NEW MESH CREATED")
+            }
+        }
+    }
+    
+    // Called whenever existing mesh anchors are updated
+    func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+        for anchor in anchors {
+            if let meshAnchor = anchor as? ARMeshAnchor {
+                printMeshGeometryInfo(meshAnchor: meshAnchor, event: "MESH UPDATED")
+            }
+        }
+    }
+    
+    private func printMeshGeometryInfo(meshAnchor: ARMeshAnchor, event: String) {
+        let geometry = meshAnchor.geometry
+        let uuid = meshAnchor.identifier.uuidString
+        
+        print("=== \(event) ===")
+        print("Mesh UUID: \(uuid)")
+        print("Vertices count: \(geometry.vertices.count)")
+        print("Faces count: \(geometry.faces.count)")
+        print("Normals count: \(geometry.normals.count)")
+        
+        // Print first few vertices for reference
+        if geometry.vertices.count > 0 {
+            let firstVertex = geometry.vertex(at: 0)
+            print(firstVertex)
+            print("First vertex: x=\(firstVertex.x), y=\(firstVertex.y), z=\(firstVertex.z)")
+        }
+        
+        // Print first few faces for reference
+        if geometry.faces.count > 0 {
+            let firstFace = geometry.faces[0]
+            print("First face indices: \(firstFace.indices[0]), \(firstFace.indices[1]), \(firstFace.indices[2])")
+        }
+        
+        if geometry.normals.count > 0 {
+            print("First few normals:")
+            let normalCount = min(3, geometry.normals.count) // Print first 3 normals
+            let nx = geometry.normals[0].0
+            let ny = geometry.normals[0].1
+            let nz = geometry.normals[0].2
+            print("Normal x=\(nx), y=\(ny), z=\(nz)")
+        }
+        
+        print("Transform matrix:")
+        let transform = meshAnchor.transform
+        print("  Position: x=\(transform[0][0]), y=\(transform[0][1]), z=\(transform[0][2])")
+        print("==================")
     }
 }
 
