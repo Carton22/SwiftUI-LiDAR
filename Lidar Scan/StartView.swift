@@ -11,6 +11,7 @@ import ARKit
 struct StartView: View {
     @State var shouldNavigateToScanView: Bool = false
     @State var shouldNavigateToViewList: Bool = false
+    @State private var showingWebSocketSheet: Bool = false
     func isLidarCapable() -> Bool {
         let supportLiDAR = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
         guard supportLiDAR else {
@@ -23,6 +24,23 @@ struct StartView: View {
         NavigationStack {
             if  isLidarCapable() {
                 VStack {
+                    // Open WebSocket control panel
+                    Button {
+                        shouldNavigateToScanView = false
+                        shouldNavigateToViewList = false
+                        showingWebSocketSheet = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                            Text("WebSocket Control")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+                    
                     Button {
                         shouldNavigateToScanView = true
                     } label: {
@@ -57,6 +75,9 @@ struct StartView: View {
         }
         .fullScreenCover(isPresented: $shouldNavigateToScanView) {
             Capture3DScanView()
+        }
+        .sheet(isPresented: $showingWebSocketSheet) {
+            WebSocketControlView()
         }
     }
 }
