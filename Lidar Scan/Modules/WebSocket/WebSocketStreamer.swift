@@ -14,8 +14,9 @@ class WebSocketStreamer: ObservableObject{
     websocketTask?.resume()
     isConnected = true
     print("Websocket is connected to: \(urlString)")
-    startStreaming()
+    sendString("Hello from iOS iPad testing now")
   }
+  
   func disconnect()
   {
     timer?.invalidate()
@@ -24,13 +25,7 @@ class WebSocketStreamer: ObservableObject{
     websocketTask = nil
     isConnected = false
   }
-  func startStreaming()
-  {
-    timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true){ _ in
-      self.sendTestMessage()
-    }
-  }
-  // MARK: - Testing helpers
+
   func sendString(_ text: String){
     guard isConnected else { print("WebSocket not connected"); return }
     let message = URLSessionWebSocketTask.Message.string(text)
@@ -42,13 +37,20 @@ class WebSocketStreamer: ObservableObject{
       }
     }
   }
-  func sendTestMessage(){
-    let payload: [String: Any] = [
-      "type": "test",
-      "message": "Hello from iOS (fake message)",
-      "timestamp": Date().timeIntervalSince1970
+  // MARK: - Mesh sending
+  func sendMeshData(_ mesh: MeshData){
+    guard isConnected else { print("WebSocket not connected"); return }
+    let envelope: [String: Any] = [
+      "type": "mesh_data",
+      "data": [
+        "id": mesh.id,
+        "vertices": mesh.vertices,
+        "faces": mesh.faces,
+        "transform": mesh.transform,
+        "timestamp": mesh.timestamp
+      ]
     ]
-    if let data = try? JSONSerialization.data(withJSONObject: payload),
+    if let data = try? JSONSerialization.data(withJSONObject: envelope),
        let json = String(data: data, encoding: .utf8){
       sendString(json)
     }

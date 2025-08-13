@@ -48,14 +48,14 @@ struct MeshData: Codable {
         // Extract faces
         let faceBuffer = meshAnchor.geometry.faces
         var faces: [[UInt32]] = []
-        faces.reserveCapacity(faceBuffer.count)
+        faces.reserveCapacity(faceBuffer.count * 3)
         
         for i in 0..<faceBuffer.count {
             let face = faceBuffer[i]
             let faceIndices = [
-                UInt32(face.indices[0]),
-                UInt32(face.indices[1]),
-                UInt32(face.indices[2])
+                UInt32(face[0]),
+                UInt32(face[1]),
+                UInt32(face[2])
             ]
             faces.append(faceIndices)
         }
@@ -180,6 +180,15 @@ struct ARWrapperView: UIViewRepresentable {
 // MARK: - Coordinator for Mesh Geometry Logging
 class Coordinator: NSObject, ARSessionDelegate {
     
+    private let streamer = WebSocketStreamer()
+    
+    override init() {
+        super.init()
+        // Connect to WebSocket when coordinator is created
+        streamer.connect(to: "ws://10.131.229.175:3001")
+        print("🔌 WebSocket connecting to ws://10.131.229.175:3001")
+    }
+    
     // Called whenever new mesh anchors are created or updated
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         for anchor in anchors {
@@ -190,13 +199,13 @@ class Coordinator: NSObject, ARSessionDelegate {
     }
     
     // Called whenever existing mesh anchors are updated
-    func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
-        for anchor in anchors {
-            if let meshAnchor = anchor as? ARMeshAnchor {
-                printMeshGeometryInfo(meshAnchor: meshAnchor, event: "MESH UPDATED")
-            }
-        }
-    }
+    // func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+    //     for anchor in anchors {
+    //         if let meshAnchor = anchor as? ARMeshAnchor {
+    //             printMeshGeometryInfo(meshAnchor: meshAnchor, event: "MESH UPDATED")
+    //         }
+    //     }
+    // }
     
     private func printMeshGeometryInfo(meshAnchor: ARMeshAnchor, event: String) {
         let geometry = meshAnchor.geometry
@@ -218,7 +227,7 @@ class Coordinator: NSObject, ARSessionDelegate {
         // Print first few faces for reference
         if geometry.faces.count > 0 {
             let firstFace = geometry.faces[0]
-            print("First face indices: \(firstFace.indices[0]), \(firstFace.indices[1]), \(firstFace.indices[2])")
+            print("First face indices: \(firstFace[0]), \(firstFace[1]), \(firstFace[2])")
         }
         
         if geometry.normals.count > 0 {
@@ -237,7 +246,11 @@ class Coordinator: NSObject, ARSessionDelegate {
         
         // Create and serialize mesh data
         let meshData = MeshData(from: meshAnchor)
-        serializeMeshData(meshData)
+        // serializeMeshData(meshData)
+
+        streamer.sendMeshData(meshData)
+
+
     }
     
     private func serializeMeshData(_ meshData: MeshData) {
@@ -258,6 +271,7 @@ class Coordinator: NSObject, ARSessionDelegate {
             print("=============================")
             
             // @Carton would use Websocket to send the data to the server later
+            
            
         } catch {
             print("Failed to serialize mesh data: \(error)")
