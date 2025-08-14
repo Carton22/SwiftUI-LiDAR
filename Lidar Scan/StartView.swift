@@ -60,9 +60,6 @@ struct StartView: View {
         .fullScreenCover(isPresented: $shouldNavigateToScanView) {
             Capture3DScanView()
         }
-        .sheet(isPresented: $showingWebSocketSheet) {
-            WebSocketControlView()
-        }
     }
 }
 

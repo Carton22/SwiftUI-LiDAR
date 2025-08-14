@@ -181,6 +181,8 @@ struct ARWrapperView: UIViewRepresentable {
 class Coordinator: NSObject, ARSessionDelegate {
     
     private let streamer = WebSocketStreamer()
+    private var seenMeshIDs = Set<UUID>()  // Store unique mesh UUIDs
+
     
     override init() {
         super.init()
@@ -192,19 +194,24 @@ class Coordinator: NSObject, ARSessionDelegate {
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         for anchor in anchors {
             if let meshAnchor = anchor as? ARMeshAnchor {
-                printMeshGeometryInfo(meshAnchor: meshAnchor, event: "NEW MESH CREATED")
+                let meshID = meshAnchor.identifier
+                if seenMeshIDs.insert(meshID).inserted { // inserted == true if it's new
+                    print("✅ New mesh added. Total meshes so far: \(seenMeshIDs.count)")
+                }
+                printMeshGeometryInfo(meshAnchor: meshAnchor, event: "mesh_create")
             }
         }
     }
     
     // Called whenever existing mesh anchors are updated
-    // func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
-    //     for anchor in anchors {
-    //         if let meshAnchor = anchor as? ARMeshAnchor {
-    //             printMeshGeometryInfo(meshAnchor: meshAnchor, event: "MESH UPDATED")
-    //         }
-    //     }
-    // }
+     func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+         for anchor in anchors {
+             if let meshAnchor = anchor as? ARMeshAnchor {
+                 print("Update Mesh. Total meshes so far: \(seenMeshIDs.count)")
+                 printMeshGeometryInfo(meshAnchor: meshAnchor, event: "mesh_update")
+             }
+         }
+     }
     
     private func printMeshGeometryInfo(meshAnchor: ARMeshAnchor, event: String) {
         let geometry = meshAnchor.geometry
@@ -231,7 +238,7 @@ class Coordinator: NSObject, ARSessionDelegate {
         
         if geometry.normals.count > 0 {
             print("First few normals:")
-            let normalCount = min(3, geometry.normals.count) // Print first 3 normals
+//            let normalCount = min(3, geometry.normals.count) // Print first 3 normals
             let nx = geometry.normals[0].0
             let ny = geometry.normals[0].1
             let nz = geometry.normals[0].2
@@ -245,36 +252,13 @@ class Coordinator: NSObject, ARSessionDelegate {
         
         // Create and serialize mesh data
         let meshData = MeshData(from: meshAnchor)
-        // serializeMeshData(meshData)
-
-        streamer.sendMeshData(meshData)
-
-
-    }
-    
-    private func serializeMeshData(_ meshData: MeshData) {
-        do {
-            
-            let jsonData = try JSONEncoder().encode(meshData)
-            let jsonString = String(data: jsonData, encoding: .utf8) ?? "Failed to encode"
-            
-            
-            print("=== MESH DATA SERIALIZED ===")
-            print("Mesh ID: \(meshData.id)")
-            print("Vertices: \(meshData.vertices.count) coordinates")
-            // print("Normals: \(meshData.normals.count) coordinates")  // Temporarily commented out
-            print("Faces: \(meshData.faces.count) triangles")
-            print("Transform: \(meshData.transform.count) matrix elements")
-            print("JSON Size: \(jsonData.count) bytes")
-            print("First few JSON characters: \(String(jsonString.prefix(100)))...")
-            print("=============================")
-            
-            // @Carton would use Websocket to send the data to the server later
-            
-           
-        } catch {
-            print("Failed to serialize mesh data: \(error)")
+        if (event == "mesh_create"){
+            streamer.sendMeshCreate(meshData)
+        } else if (event == "mesh_update"){
+            streamer.sendMeshUpdate(meshData)
         }
+
+
     }
 }
 
