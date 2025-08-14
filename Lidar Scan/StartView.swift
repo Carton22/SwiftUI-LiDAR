@@ -24,22 +24,6 @@ struct StartView: View {
         NavigationStack {
             if  isLidarCapable() {
                 VStack {
-                    // Open WebSocket control panel
-                    // Button {
-                    //     shouldNavigateToScanView = false
-                    //     shouldNavigateToViewList = false
-                    //     showingWebSocketSheet = true
-                    // } label: {
-                    //     HStack {
-                    //         Image(systemName: "antenna.radiowaves.left.and.right")
-                    //         Text("WebSocket Control")
-                    //     }
-                    //     .frame(maxWidth: .infinity)
-                    //     .padding()
-                    //     .background(Color.green)
-                    //     .foregroundColor(.white)
-                    //     .cornerRadius(10)
-                    // }
                     
                     Button {
                         shouldNavigateToScanView = true

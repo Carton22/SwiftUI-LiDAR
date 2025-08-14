@@ -185,8 +185,7 @@ class Coordinator: NSObject, ARSessionDelegate {
     override init() {
         super.init()
         // Connect to WebSocket when coordinator is created
-        streamer.connect(to: "ws://10.131.229.175:3001")
-        print("🔌 WebSocket connecting to ws://10.131.229.175:3001")
+        streamer.connect(to: "ws://10.131.122.106:3001")
     }
     
     // Called whenever new mesh anchors are created or updated
