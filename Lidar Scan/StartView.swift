@@ -11,7 +11,8 @@ import ARKit
 struct StartView: View {
     @State var shouldNavigateToScanView: Bool = false
     @State var shouldNavigateToViewList: Bool = false
-    @State private var showingWebSocketSheet: Bool = false
+    @StateObject private var webSocketStreamer = WebSocketStreamer()
+
     func isLidarCapable() -> Bool {
         let supportLiDAR = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
         guard supportLiDAR else {
@@ -20,10 +21,21 @@ struct StartView: View {
         }
         return true
     }
+
     var body: some View {
         NavigationStack {
             if  isLidarCapable() {
                 VStack {
+
+                    Button(action: {
+                        webSocketStreamer.sendString("Websocket connection test!")
+                    }) {
+                        Text("Send Websocket Connection Test Message")
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                    }
                     
                     Button {
                         shouldNavigateToScanView = true
@@ -58,7 +70,10 @@ struct StartView: View {
             }
         }
         .fullScreenCover(isPresented: $shouldNavigateToScanView) {
-            Capture3DScanView()
+            Capture3DScanView(webSocketStreamer: webSocketStreamer)
+        }
+        .onAppear { // Step 2: Connect to the WebSocket server
+            webSocketStreamer.connect(to: "ws://10.131.122.106:3001")
         }
     }
 }

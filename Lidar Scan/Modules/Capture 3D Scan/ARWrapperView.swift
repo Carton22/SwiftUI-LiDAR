@@ -76,6 +76,7 @@ struct ARWrapperView: UIViewRepresentable {
     @Binding var submittedExportRequest: Bool
     @Binding var submittedName: String
     @Binding var pauseSession: Bool
+    @ObservedObject var webSocketStreamer: WebSocketStreamer
     
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: false)
@@ -173,21 +174,21 @@ struct ARWrapperView: UIViewRepresentable {
     
     // Add coordinator for mesh geometry logging
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(webSocketStreamer: webSocketStreamer)
     }
 }
 
 // MARK: - Coordinator for Mesh Geometry Logging
 class Coordinator: NSObject, ARSessionDelegate {
     
-    private let streamer = WebSocketStreamer()
+    private let webSocketStreamer: WebSocketStreamer
+
     private var seenMeshIDs = Set<UUID>()  // Store unique mesh UUIDs
 
-    
-    override init() {
+    init(webSocketStreamer: WebSocketStreamer) {
+        self.webSocketStreamer = webSocketStreamer
         super.init()
         // Connect to WebSocket when coordinator is created
-        streamer.connect(to: "ws://10.131.122.106:3001")
     }
     
     // Called whenever new mesh anchors are created or updated
@@ -253,9 +254,9 @@ class Coordinator: NSObject, ARSessionDelegate {
         // Create and serialize mesh data
         let meshData = MeshData(from: meshAnchor)
         if (event == "mesh_create"){
-            streamer.sendMeshCreate(meshData)
+            webSocketStreamer.sendMeshCreate(meshData)
         } else if (event == "mesh_update"){
-            streamer.sendMeshUpdate(meshData)
+            webSocketStreamer.sendMeshUpdate(meshData)
         }
 
 

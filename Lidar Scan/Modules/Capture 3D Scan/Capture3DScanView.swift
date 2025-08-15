@@ -14,14 +14,17 @@ struct Capture3DScanView: View {
     @State var pauseSession: Bool = false
     @State var showingExportAlert = false
     @State var tempFileName = ""
-    
+    @ObservedObject var webSocketStreamer: WebSocketStreamer
+
     var body: some View {
         ZStack(alignment: .bottom) {
             // AR View as background
             ARWrapperView(submittedExportRequest: $submittedExportRequest,
                         submittedName: $submittedName,
-                        pauseSession: $pauseSession)
+                        pauseSession: $pauseSession,
+                        webSocketStreamer: webSocketStreamer)
             .ignoresSafeArea()
+
             
             // Overlay UI
             VStack {
@@ -85,5 +88,5 @@ struct Capture3DScanView: View {
 }
 
 #Preview {
-    Capture3DScanView()
+    Capture3DScanView(webSocketStreamer: WebSocketStreamer())
 }
