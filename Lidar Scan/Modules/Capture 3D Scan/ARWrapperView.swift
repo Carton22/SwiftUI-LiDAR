@@ -90,6 +90,7 @@ struct ARWrapperView: UIViewRepresentable {
         
         // Set up session delegate for mesh geometry logging
         arView.session.delegate = context.coordinator
+        context.coordinator.arView = arView
         
         print("ARView created and session started")
         return arView
@@ -182,6 +183,7 @@ struct ARWrapperView: UIViewRepresentable {
 class Coordinator: NSObject, ARSessionDelegate {
     
     private let webSocketStreamer: WebSocketStreamer
+    weak var arView: ARView?
 
     private var seenMeshIDs = Set<UUID>()  // Store unique mesh UUIDs
 
@@ -190,7 +192,66 @@ class Coordinator: NSObject, ARSessionDelegate {
         super.init()
         // Connect to WebSocket when coordinator is created
     }
-    
+
+    // MARK: - Debug axis helpers
+    private func makeAxisEntity(axisLength: Float = 0.1, axisThickness: Float = 0.02) -> Entity {
+        let root = Entity()
+
+        func stick(color: UIColor) -> ModelEntity {
+            let mesh = MeshResource.generateBox(size: [axisThickness, axisThickness, axisLength])
+            let mat = SimpleMaterial(color: color, isMetallic: false)
+            let model = ModelEntity(mesh: mesh, materials: [mat])
+            // Shift so it starts at origin and extends in +axis direction (half-axis)
+            model.position = [0, 0, 0]
+            return model
+        }
+
+        // Z axis (blue) – forward
+        let z = stick(color: .blue)
+        z.position = [0, 0, axisLength / 2]
+        root.addChild(z)
+
+        // X axis (red) – rotate Z-stick to +X
+        let x = stick(color: .red)
+        x.transform.rotation = simd_quatf(angle: .pi / 2, axis: [0, 1, 0])
+        x.position = [axisLength / 2, 0, 0]
+        root.addChild(x)
+
+        // Y axis (green) – rotate Z-stick to +Y
+        let y = stick(color: .green)
+        y.transform.rotation = simd_quatf(angle: -.pi / 2, axis: [1, 0, 0])
+        y.position = [0, axisLength / 2, 0]
+        root.addChild(y)
+
+        // Small origin sphere
+        let sphere = ModelEntity(
+            mesh: .generateSphere(radius: axisThickness * 1.5),
+            materials: [SimpleMaterial(color: .white, isMetallic: false)]
+        )
+        root.addChild(sphere)
+
+        return root
+    }
+
+    private var anchorIdToDebug: [UUID: AnchorEntity] = [:]
+    private func upsertDebug(for meshAnchor: ARMeshAnchor) {
+        guard let arView = arView else { return }
+        let id = meshAnchor.identifier
+        if let a = anchorIdToDebug[id] {
+            a.transform.matrix = meshAnchor.transform
+            return
+        }
+        let anchorEntity = AnchorEntity(world: meshAnchor.transform)
+        anchorEntity.addChild(makeAxisEntity())
+        arView.scene.addAnchor(anchorEntity)
+        anchorIdToDebug[id] = anchorEntity
+    }
+    private func removeDebug(for id: UUID) {
+        if let a = anchorIdToDebug.removeValue(forKey: id) {
+            a.removeFromParent()
+        }
+    }
+
     // Called whenever new mesh anchors are created or updated
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         for anchor in anchors {
@@ -199,21 +260,31 @@ class Coordinator: NSObject, ARSessionDelegate {
                 if seenMeshIDs.insert(meshID).inserted { // inserted == true if it's new
                     print("✅ New mesh added. Total meshes so far: \(seenMeshIDs.count)")
                 }
+                upsertDebug(for: meshAnchor)
                 printMeshGeometryInfo(meshAnchor: meshAnchor, event: "mesh_create")
             }
         }
     }
-    
+
     // Called whenever existing mesh anchors are updated
      func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
          for anchor in anchors {
              if let meshAnchor = anchor as? ARMeshAnchor {
                  print("Update Mesh. Total meshes so far: \(seenMeshIDs.count)")
+                 upsertDebug(for: meshAnchor)
                  printMeshGeometryInfo(meshAnchor: meshAnchor, event: "mesh_update")
              }
          }
      }
-    
+
+    func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
+        for anchor in anchors {
+            if let meshAnchor = anchor as? ARMeshAnchor {
+                removeDebug(for: meshAnchor.identifier)
+            }
+        }
+    }
+
     private func printMeshGeometryInfo(meshAnchor: ARMeshAnchor, event: String) {
         let geometry = meshAnchor.geometry
         let uuid = meshAnchor.identifier.uuidString
