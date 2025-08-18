@@ -260,7 +260,7 @@ class Coordinator: NSObject, ARSessionDelegate {
                 if seenMeshIDs.insert(meshID).inserted { // inserted == true if it's new
                     print("✅ New mesh added. Total meshes so far: \(seenMeshIDs.count)")
                 }
-                upsertDebug(for: meshAnchor)
+//                upsertDebug(for: meshAnchor)
                 printMeshGeometryInfo(meshAnchor: meshAnchor, event: "mesh_create")
             }
         }
@@ -271,19 +271,19 @@ class Coordinator: NSObject, ARSessionDelegate {
          for anchor in anchors {
              if let meshAnchor = anchor as? ARMeshAnchor {
                  print("Update Mesh. Total meshes so far: \(seenMeshIDs.count)")
-                 upsertDebug(for: meshAnchor)
+//                 upsertDebug(for: meshAnchor)
                  printMeshGeometryInfo(meshAnchor: meshAnchor, event: "mesh_update")
              }
          }
      }
 
-    func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
-        for anchor in anchors {
-            if let meshAnchor = anchor as? ARMeshAnchor {
-                removeDebug(for: meshAnchor.identifier)
-            }
-        }
-    }
+//    func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
+//        for anchor in anchors {
+//            if let meshAnchor = anchor as? ARMeshAnchor {
+//                removeDebug(for: meshAnchor.identifier)
+//            }
+//        }
+//    }
 
     private func printMeshGeometryInfo(meshAnchor: ARMeshAnchor, event: String) {
         let geometry = meshAnchor.geometry
