@@ -28,9 +28,10 @@ struct MeshData: Codable {
         var vertices: [Float] = []
         vertices.reserveCapacity(vertexCount * 3)
         
+        // convert from ARKit coordinate system to Unity coordinate system
         for i in 0..<vertexCount {
             let vertex = meshAnchor.geometry.vertex(at: UInt32(i))
-            vertices.append(contentsOf: [Float(vertex.x), Float(vertex.y), Float(vertex.z)])
+            vertices.append(contentsOf: [Float(vertex.x), Float(vertex.y), Float(-vertex.z)])
         }
         self.vertices = vertices
         
@@ -63,12 +64,26 @@ struct MeshData: Codable {
         
         // Extract transform matrix
         let transform = meshAnchor.transform
+        
+        // Convert from ARKit right-handed to Unity left-handed coordinate system
+        // Create conversion matrix that flips Z-axis
+        let conversionMatrix = simd_float4x4(
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, -1, 0],
+            [0, 0, 0, 1]
+        )
+        
+        // Apply conversion: unityMatrix = conversionMatrix * arkitMatrix * conversionMatrix
+        let convertedTransform = conversionMatrix * transform * conversionMatrix
+        
         self.transform = [
-            Float(transform[0][0]), Float(transform[0][1]), Float(transform[0][2]), Float(transform[0][3]),
-            Float(transform[1][0]), Float(transform[1][1]), Float(transform[1][2]), Float(transform[1][3]),
-            Float(transform[2][0]), Float(transform[2][1]), Float(transform[2][2]), Float(transform[2][3]),
-            Float(transform[3][0]), Float(transform[3][1]), Float(transform[3][2]), Float(transform[3][3])
+            Float(convertedTransform[0][0]), Float(convertedTransform[0][1]), Float(convertedTransform[0][2]), Float(convertedTransform[0][3]),
+            Float(convertedTransform[1][0]), Float(convertedTransform[1][1]), Float(convertedTransform[1][2]), Float(convertedTransform[1][3]),
+            Float(convertedTransform[2][0]), Float(convertedTransform[2][1]), Float(convertedTransform[2][2]), Float(convertedTransform[2][3]),
+            Float(convertedTransform[3][0]), Float(convertedTransform[3][1]), Float(convertedTransform[3][2]), Float(convertedTransform[3][3])
         ]
+
     }
 }
 
